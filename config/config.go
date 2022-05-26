@@ -11,15 +11,15 @@ type Config struct {
 	PostEndpoint string
 }
 
-func GetConfig() Config {
+func GetConfig() (Config) {
 	batchSize, err := strconv.Atoi(os.Getenv("BATCH_SIZE")) 
 	if err != nil {
-		panic("BATCH_SIZE env variable not set")
+		panic("BATCH_SIZE env variable must be an integer")
 	}
 
 	batchSecondInterval, err := strconv.Atoi(os.Getenv("BATCH_SECOND_INTERVAL"))
 	if err != nil {
-		panic("BATCH_SECOND_INTERVAL env variable not set")
+		panic("BATCH_SECOND_INTERVAL env variable must be an integer")
 	}
 
 	postEndPoint := os.Getenv("POST_ENDPOINT_URL")
