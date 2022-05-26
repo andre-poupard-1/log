@@ -19,6 +19,7 @@ func HandlePost(incomingEvent *chan Post) (func (c *gin.Context)) {
 			}
 		}()
 	
+		// return 202 to show async processing
 		c.JSON(202, nil)
 	}
 }
