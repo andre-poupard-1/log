@@ -1,10 +1,12 @@
-package buffer
+package post
 
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
+	"main/config"
 )
 
 type PostBackBuffer[T any] struct {
@@ -16,6 +18,7 @@ type PostBackBuffer[T any] struct {
 }
 
 func (buf *PostBackBuffer[T]) waitForEvents() {
+	buf.startIntervalTicker()
 	for {
 		select {
 			case event := <-*buf.Incoming:
@@ -27,7 +30,7 @@ func (buf *PostBackBuffer[T]) waitForEvents() {
 }
 
 func (buf *PostBackBuffer[T]) startIntervalTicker () {
-	intervalTicker := time.NewTicker(2 * time.Second)
+	intervalTicker := time.NewTicker(time.Duration(config.GetConfig().BatchSecondInterval) * time.Second)
 	go func() {
 		for {
 			<-intervalTicker.C
@@ -44,7 +47,7 @@ func (buf *PostBackBuffer[T]) HandleIntervalEvent() {
 
 func (buf *PostBackBuffer[T]) EmptyBuffer() {
 	oldBuf := buf.ResetBuffer()
-	go buf.SendPostBack(oldBuf)
+	go buf.AttemptSendPostBack(oldBuf)
 }
 
 func (buf *PostBackBuffer[T]) HandleIncomingEvent(event T) {
@@ -60,20 +63,21 @@ func (buf *PostBackBuffer[T]) AtCapacity() bool {
 
 func (buf *PostBackBuffer[T]) SendPostBack(body []T) (*http.Response, error) {
 	postBody, _ := json.Marshal(body)
-	resp, err := http.Post(buf.PostbackUrl, "application/json", bytes.NewBuffer(postBody))
-	defer resp.Body.Close()
+	resp, err := http.Post(buf.PostbackUrl, "application/json", bytes.NewBuffer(postBody))	
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	return resp, err
 }
 
 func (buf *PostBackBuffer[T]) AttemptSendPostBack(body []T) {
-	attempts := 0
+	attempts := 1
 	const MAX_ATTEMPTS = 3
 	for {
 		_, err := buf.SendPostBack(body)
 		if err != nil {
+			fmt.Println(err.Error())
 			if attempts == MAX_ATTEMPTS {
 				break
 			}
@@ -89,6 +93,6 @@ func (buf *PostBackBuffer[T]) AttemptSendPostBack(body []T) {
 func (buf *PostBackBuffer[T]) ResetBuffer() ([]T) {
 	cpy := make([]T, len(buf.Buffer))
 	copy(cpy, buf.Buffer)
-	buf.Buffer = make([]T, 0, buf.BufferLimit)
+	buf.Buffer = make([]T, 0)
 	return cpy
 }
