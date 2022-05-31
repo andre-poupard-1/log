@@ -20,7 +20,7 @@ func HandlePost(incomingEvent *chan Post, logger *zap.Logger) (func (c *gin.Cont
 			return
 		}
 	
-		*incomingEvent <- log	
+		go func() { *incomingEvent <- log	}()
 		
 		// return 202 to show async processing
 		c.JSON(202, nil)
